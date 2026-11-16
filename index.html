@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>סיור דיגיטלי – 4 חדרים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#111;font-family:Heebo,-apple-system,"Segoe UI",Arial,sans-serif;color:#fff}
+  canvas{display:block;width:100vw;height:100vh;touch-action:none}
+  #pc{position:fixed;inset:0;cursor:grab} #pc:active{cursor:grabbing}
+  body.walk #pc,body.walk .pano-ui{display:none}
+  body:not(.walk) #c,body:not(.walk) .walk-ui{display:none}
+  /* ---------- 360 UI ---------- */
+  #brand{position:fixed;top:16px;right:18px;z-index:6;font-weight:500;font-size:17px;letter-spacing:.3px;text-shadow:0 1px 8px rgba(0,0,0,.45)}
+  #brand small{display:block;font-weight:300;font-size:12px;opacity:.85}
+  #hot{position:fixed;inset:0;pointer-events:none;z-index:4}
+  .hs{all:unset;position:absolute;left:0;top:0;pointer-events:auto;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .hs .ring{width:44px;height:44px;border-radius:50%;border:3px solid rgba(255,255,255,.95);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 10px rgba(0,0,0,.35);background:rgba(255,255,255,.12)}
+  .hs .dot{width:20px;height:20px;border-radius:50%;background:#e0907a}
+  .hs .lbl{background:#e0907a;color:#2b1a14;font-weight:600;font-size:13px;padding:4px 10px;border-radius:6px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+  .hs:hover .ring{transform:scale(1.08);background:rgba(255,255,255,.25)}
+  #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .22s;z-index:5;display:flex;align-items:center;justify-content:center}
+  #fade.on{opacity:.55}
+  #ptxt{font-size:14px;color:#eee}
+  #bottom{position:fixed;left:0;right:0;bottom:0;z-index:6;padding:10px 12px 14px;background:linear-gradient(transparent,rgba(0,0,0,.55));display:flex;align-items:center;gap:10px}
+  #rooms{display:flex;gap:6px;overflow-x:auto;flex:1;scrollbar-width:none}
+  #rooms::-webkit-scrollbar{display:none}
+  #rooms button,.modebtn{all:unset;cursor:pointer;white-space:nowrap;font-size:13px;padding:7px 13px;border-radius:20px;background:rgba(255,255,255,.14);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+  #rooms button.on{background:#e0907a;color:#2b1a14;font-weight:600}
+  .modebtn{background:#2f5a46;font-weight:500}
+  #hint{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:5;background:rgba(0,0,0,.45);padding:10px 18px;border-radius:24px;font-size:14px;pointer-events:none;transition:opacity .6s}
+  #hint.gone{opacity:0}
+  /* ---------- walk UI (unchanged from the free-walk mode) ---------- */
+  #c{cursor:grab}
+  #loading{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#15171a;transition:opacity .6s;z-index:7}
+  #loading.done{opacity:0;pointer-events:none}
+  #loading h1{font-weight:500;font-size:22px;margin:0;letter-spacing:.5px}
+  .track{width:260px;height:3px;background:#333;border-radius:2px;overflow:hidden}
+  #bar{height:100%;width:0;background:#e9d8b4;transition:width .2s}
+  #loadtxt{font-size:13px;color:#aaa}
+  #start{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:4;background:rgba(0,0,0,.35);cursor:pointer}
+  #start.show{display:flex}
+  #start div{background:rgba(20,20,22,.85);padding:22px 28px;border-radius:14px;text-align:center;line-height:1.7;font-size:15px;max-width:340px}
+  #start b{display:block;font-size:18px;margin-bottom:6px}
+  #panel{position:fixed;top:12px;right:12px;z-index:3;background:rgba(20,20,22,.72);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:12px;padding:10px;max-width:190px}
+  #panel h2{font-size:12px;font-weight:600;color:#bbb;margin:2px 4px 8px}
+  #views{display:flex;flex-direction:column;gap:4px}
+  #views button{all:unset;cursor:pointer;font-size:13px;padding:6px 10px;border-radius:7px;color:#eee}
+  #views button:hover{background:rgba(255,255,255,.12)}
+  .exp{margin:10px 4px 2px;font-size:12px;color:#bbb}
+  .exp input{width:100%}
+  #back360{margin-top:8px;width:100%;text-align:center;box-sizing:border-box}
+  #help{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);z-index:3;font-size:12px;color:#ddd;background:rgba(20,20,22,.6);padding:6px 12px;border-radius:20px;white-space:nowrap}
+  #stick{position:fixed;width:100px;height:100px;border-radius:50%;border:2px solid rgba(255,255,255,.4);display:none;z-index:3;pointer-events:none}
+  #stick.on{display:block}
+  #knob{position:absolute;left:30px;top:30px;width:40px;height:40px;border-radius:50%;background:rgba(255,255,255,.55)}
+  @media (pointer:coarse){#help .desk{display:none}} @media (pointer:fine){#help .touch{display:none}}
+  @media (max-width:600px){#panel{max-width:150px;padding:6px}#views button{font-size:12px;padding:5px 8px}#brand{font-size:15px}}
+</style>
+</head>
+<body>
+<!-- 360° photoreal tour -->
+<canvas id="pc"></canvas>
+<div class="pano-ui">
+  <div id="brand">סיור דיגיטלי · 4 חדרים<small>גררי כדי להסתכל · לחצי על נקודה כדי לעבור</small></div>
+  <div id="hot"></div>
+  <div id="fade"><span id="ptxt"></span></div>
+  <div id="hint">גררי כדי להסתכל מסביב</div>
+  <div id="bottom"><div id="rooms"></div></div>
+</div>
+<script>
+  (function(){
+    function show(msg){ var b=document.getElementById('brand'); var t=document.getElementById('loadtxt');
+      if(document.body.classList.contains('walk')){ var l=document.getElementById('loading'); l.classList.remove('done'); l.style.opacity=1; t.style.color='#f2b8a0'; t.textContent='שגיאה: '+msg; }
+      else if(b){ var e=document.getElementById('err')||document.createElement('div'); e.id='err'; e.style.cssText='position:fixed;top:70px;right:18px;z-index:9;background:#5a2a20;padding:8px 12px;border-radius:8px;font-size:13px;max-width:80vw'; e.textContent='שגיאה: '+msg; document.body.appendChild(e); } }
+    window.__showError=show;
+    window.addEventListener('error',function(e){ show((e.message||'')+' '+(e.filename||'').split('/').pop()+':'+(e.lineno||'')); });
+    window.addEventListener('unhandledrejection',function(e){ show(String(e.reason&&e.reason.message||e.reason)); });
+    try{ var c=document.createElement('canvas'); if(!(c.getContext('webgl2')||c.getContext('webgl'))) setTimeout(function(){show('הדפדפן לא תומך ב-WebGL (האצת גרפיקה כבויה?)');},0);}catch(e){}
+  })();
+</script>
+<script src="tour_data.js"></script>
+<script src="pano.js"></script>
+</body>
+</html>
